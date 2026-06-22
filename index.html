@@ -141,6 +141,8 @@
     </div>
   </div>
 
+  <p id="levelHint" style="margin:-2px 0 14px;color:var(--ink-soft);font-size:.82rem;font-weight:600;"></p>
+
   <div class="qbar">
     <span class="counter" id="counter">문제 1 / 10</span>
     <span class="score" id="score">맞힌 문제 0</span>
@@ -180,13 +182,17 @@
   let set=[], qi=0, score=0, solvedThis=false, m=null;
 
   function genProblem(){
-    let d1=rnd(2,10), d2=rnd(2,10);
-    while(d2===d1) d2=rnd(2,10);
+    let d1=rnd(2,12), d2=rnd(2,12);
+    while(d2===d1) d2=rnd(2,12);
     let n1=rnd(1,d1-1), n2=rnd(1,d2-1);
     let op=Math.random()<0.5?'+':'-';
-    if(level==='mid'){
-      if(Math.random()<0.5)n1=-n1;
-      if(Math.random()<0.5)n2=-n2;
+    if(level==='elem'){
+      // 초등: 양의 분수만, 뺄셈 결과가 음수가 되지 않도록 큰 분수를 앞에 둠
+      if(op==='-' && n1*d2 < n2*d1){ [n1,d1,n2,d2]=[n2,d2,n1,d1]; }
+    } else {
+      // 중등: 유리수 — 분자에 음수 부호가 붙을 수 있고 결과도 음수 가능
+      if(Math.random()<0.55) n1=-n1;
+      if(Math.random()<0.55) n2=-n2;
     }
     return {n1,d1,n2,d2,op};
   }
@@ -333,7 +339,10 @@
     $('doneBanner').classList.add('show');
   }
 
-  function setLevel(lv){level=lv;$('lvElem').setAttribute('aria-pressed',lv==='elem');$('lvMid').setAttribute('aria-pressed',lv==='mid');newSet();}
+  function updateHint(){ $('levelHint').textContent = level==='elem'
+    ? '초등 · 양의 분수만 나와요. 뺄셈도 결과가 0 이상이에요.'
+    : '중등 · 음수(유리수)가 섞여 나오고, 결과가 음수일 수 있어요.'; }
+  function setLevel(lv){level=lv;$('lvElem').setAttribute('aria-pressed',lv==='elem');$('lvMid').setAttribute('aria-pressed',lv==='mid');updateHint();newSet();}
   function setMethod(mt){method=mt;$('mLcm').setAttribute('aria-pressed',mt==='lcm');$('mProd').setAttribute('aria-pressed',mt==='prod');loadQuestion();}
   $('lvElem').addEventListener('click',()=>setLevel('elem'));
   $('lvMid').addEventListener('click',()=>setLevel('mid'));
@@ -350,6 +359,7 @@
     set[qi]={n1,d1,n2,d2,op};loadQuestion();
   });
 
+  updateHint();
   newSet();
 })();
 </script>
