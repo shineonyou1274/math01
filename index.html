@@ -118,6 +118,32 @@
     .tcard{padding:12px;gap:2px 10px;}
     .tcard .num,.tcard .den{font-size:1.35rem;}
   }
+  .bm{display:flex;flex-direction:column;gap:6px;}
+  .bm-row{display:flex;align-items:center;gap:8px;}
+  .bm-label{font-size:.78rem;font-weight:700;color:var(--ink-soft);min-width:52px;}
+  .bm-track{width:200px;max-width:46vw;height:22px;border:2px solid var(--ink);border-radius:5px;overflow:hidden;background:#fff;display:flex;}
+  .bm-track.neg{border-color:var(--hint);}
+  .bm-cell{flex:1;border-right:1px solid rgba(31,39,51,.15);}
+  .bm-cell:last-child{border-right:0;}
+  .bm-cell.on{background:var(--progress);}
+  .bm-track.neg .bm-cell.on{background:var(--hint);}
+  .bm-cont{height:100%;background:var(--progress);}
+  .bm-track.neg .bm-cont{background:var(--hint);}
+
+  .bm-track.ok{border-color:var(--progress);}
+  .bm-track.no{border-color:var(--hint);background:var(--hint-soft);}
+  .bm-track.no .bm-cell{border-right-color:rgba(223,79,55,.3);}
+
+  .mult-row{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;flex-wrap:wrap;}
+  .mult-label{font-size:.82rem;font-weight:800;color:var(--ink-soft);min-width:58px;padding-top:9px;}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;}
+  .chip{font-family:inherit;font-size:1.05rem;font-weight:800;min-width:44px;height:42px;padding:0 11px;
+    border:2px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);cursor:pointer;}
+  .chip:hover{border-color:var(--active);}
+  .chip:focus-visible{outline:3px solid var(--active-soft);}
+  .chip.good{border-color:var(--progress);background:var(--progress-soft);color:var(--progress);}
+  .chip.bad{border-color:var(--hint);background:var(--hint-soft);color:var(--hint);}
+
   @media (prefers-reduced-motion:reduce){.arrow.live svg{animation:none;} *{transition:none !important;}}
 </style>
 </head>
@@ -211,6 +237,14 @@
 
   function bigfrac(n,d){return `<span class="bigfrac"><span class="top">${n}</span><span class="bar"></span><span class="bot">${d}</span></span>`;}
 
+  function barModel(num,den,label){
+    const neg=num<0, a=Math.abs(num);
+    let inner='';
+    if(den<=12){ for(let k=0;k<den;k++) inner+=`<div class="bm-cell${k<a?' on':''}"></div>`; }
+    else { inner=`<div class="bm-cont" style="width:${Math.min(100,a/den*100)}%"></div>`; }
+    return `<div class="bm-row">${label?`<span class="bm-label">${label}</span>`:''}<div class="bm-track${neg?' neg':''}" role="img" aria-label="${num}/${den}">${inner}</div></div>`;
+  }
+
   function loadQuestion(){
     m=compute(set[qi]); solvedThis=false;
     $('counter').textContent=`문제 ${qi+1} / ${set.length}`;
@@ -228,7 +262,12 @@
       <div class="fbar"></div><div class="arr"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div><div class="fbar"></div>
       <div class="den">${d}</div><div class="mul">×${factor}</div><div class="den">${common}</div>
     </div>
-    <p class="thint">분모 <b>${d} → ${common}</b> 이 되려면 위아래에 <b>${factor}</b>를 곱해요. &nbsp;분자: <b>${n} × ${factor} = ?</b></p>`;
+    <p class="thint">분모 <b>${d} → ${common}</b> 이 되려면 위아래에 <b>${factor}</b>를 곱해요. &nbsp;분자: <b>${n} × ${factor} = ?</b></p>
+    <div class="bm" style="margin:0 0 14px">
+      ${barModel(n,d,'바꾸기 전')}
+      ${barModel(n*factor,common,'바꾼 뒤')}
+      <p class="thint" style="margin:4px 0 0">색칠한 길이는 그대로! 칸만 잘게 나뉘었어요.</p>
+    </div>`;
   }
 
   function renderSteps(){
@@ -236,11 +275,12 @@
     $('trail').innerHTML = `
       <div class="step" id="s0" data-state="active">
         <div class="step-head"><div class="badge">1</div><div class="step-title">공통분모 정하기</div><span class="check">완료 ✓</span></div>
-        <p class="step-sub">${methodLabel}으로 분모를 같게 만들어요. (분모: ${m.d1}, ${m.d2})</p>
-        <div class="step-body"><div class="row">
-          <div><span class="ilabel">공통분모</span><input id="i0" class="ibox" inputmode="numeric" aria-label="공통분모"/></div>
-          <button class="verify" data-step="0">확인</button>
-        </div></div>
+        <p class="step-sub">두 분수를 더하려면 두 띠를 <b>똑같은 칸</b>으로 잘라야 해요. 두 띠가 모두 깔끔하게 나뉘는 칸 수가 <b>공통분모</b>예요.</p>
+        <div class="bm" id="prev" style="margin:10px 0 0 40px"></div>
+        <div class="step-body">
+          <p class="thint" style="margin:0 0 7px">칸 수를 눌러 보세요. 두 띠가 <b>모두</b> 깔끔해지면(✓) 그게 공통분모예요${method==='prod'?` (분모곱: ${m.d1}×${m.d2})`:''}.</p>
+          <div class="chips" id="cand"></div>
+        </div>
         <div class="feedback" id="f0"></div>
       </div>
       ${arrowEl()}
@@ -275,42 +315,86 @@
     $('trail').querySelectorAll('input').forEach(inp=>inp.addEventListener('keydown',e=>{
       if(e.key==='Enter'){const st=inp.closest('.step');const idx=['s0','s1','s2','s3'].indexOf(st.id);if(idx>=0)verify(idx);}
     }));
-    setTimeout(()=>{const i=$('i0');if(i)i.focus();},40);
+    buildCandidates();
+    setTimeout(()=>{const c=document.querySelector('#cand .chip');if(c)c.focus();},40);
   }
 
   const setState=(i,s)=>{const el=$('s'+i);if(el)el.dataset.state=s;};
   function liveArrow(i){document.querySelectorAll('.arrow').forEach(a=>a.classList.remove('live'));const a=document.querySelectorAll('.arrow')[i];if(a)a.classList.add('live');}
   const fb=(i,msg,kind)=>{const f=$('f'+i);if(f){f.textContent=msg||'';f.className='feedback'+(kind?(' '+kind):'');}};
 
-  function verify(i){
-    if(i===0){
-      const v=pint($('i0').value);
-      const target=method==='lcm'?lcm(m.d1,m.d2):m.d1*m.d2;
-      if(Number.isNaN(v)){fb(0,'공통분모에 들어갈 수를 적어 주세요.','bad');return;}
-      if(v===target){
-        setState(0,'done');setState(1,'active');liveArrow(1);fb(0,'');
-        $('tbody').innerHTML = tcard(m.n1,m.d1,m.f1,m.common,'i1a') + tcard(m.n2,m.d2,m.f2,m.common,'i1b');
-        $('tbody').querySelectorAll('input').forEach(inp=>inp.addEventListener('keydown',e=>{if(e.key==='Enter')verify(1);}));
-        const t=$('i1a');if(t)t.focus();
-        return;
-      }
-      const okOther = (method==='lcm' && v===m.d1*m.d2) || (method==='prod' && v===lcm(m.d1,m.d2));
-      if(okOther){fb(0,`그 수도 공통분모예요. 지금 화면은 ${method==='lcm'?'최소공배수':'분모곱'}(${target})로 맞춰져 있어요.`,'bad');return;}
-      if(v>0 && v%m.d1===0 && v%m.d2===0){fb(0,`공통분모이긴 해요. 지금은 ${target}로 맞춰 볼까요?`,'bad');return;}
-      fb(0,`아직 공통분모가 아니에요. ${m.d1}와 ${m.d2}로 모두 나누어떨어지는 수를 찾아 보세요.`,'bad');
+  function previewBar(num,den,cells,label){
+    const a=Math.abs(num), sign=num<0?'-':'';
+    if(cells==null){
+      let inner=''; for(let k=0;k<den;k++) inner+=`<div class="bm-cell${k<a?' on':''}"></div>`;
+      return `<div class="bm-row"><span class="bm-label">${label} ${sign}${a}/${den}</span><div class="bm-track">${inner}</div></div>`;
     }
-    else if(i===1){
+    if(cells%den===0){
+      const filled=a*(cells/den); let inner='';
+      for(let k=0;k<cells;k++) inner+=`<div class="bm-cell${k<filled?' on':''}"></div>`;
+      return `<div class="bm-row"><span class="bm-label">${label} ${den}→${cells} ✓</span><div class="bm-track ok">${inner}</div></div>`;
+    }
+    let inner=''; for(let k=0;k<den;k++) inner+=`<div class="bm-cell"></div>`;
+    return `<div class="bm-row"><span class="bm-label">${label} ${den}→${cells} ✗</span><div class="bm-track no">${inner}</div></div>`;
+  }
+  function previewRender(c){ $('prev').innerHTML = previewBar(m.n1,m.d1,c,'①') + previewBar(m.n2,m.d2,c,'②'); }
+  function buildCandidates(){
+    const set=new Set();
+    for(let k=1;k<=m.d2;k++) set.add(m.d1*k);
+    for(let k=1;k<=m.d1;k++) set.add(m.d2*k);
+    const list=[...set].sort((a,b)=>a-b);
+    $('cand').innerHTML=list.map(v=>`<button class="chip" data-val="${v}">${v}</button>`).join('');
+    document.querySelectorAll('#cand .chip').forEach(c=>c.addEventListener('click',()=>pickCand(+c.dataset.val,c)));
+    previewRender(null);
+  }
+  function pickCand(c,chip){
+    const target=method==='lcm'?lcm(m.d1,m.d2):m.d1*m.d2;
+    document.querySelectorAll('#cand .chip').forEach(x=>x.classList.remove('good','bad'));
+    previewRender(c);
+    const fit1=c%m.d1===0, fit2=c%m.d2===0;
+    if(fit1&&fit2){
+      chip.classList.add('good');
+      if(c===target){ fb(0,''); unlockStep2(); return; }
+      fb(0, method==='lcm' ? '두 띠 모두 깔끔해요! 공통분모 맞아요. 더 작은 칸도 되는지 볼까요?' : `두 띠 모두 깔끔해요! 지금은 분모곱(${target})으로 골라요.`, 'good');
+    } else {
+      chip.classList.add('bad');
+      fb(0, `${(!fit1?m.d1:m.d2)}칸 띠가 ${c}칸에 딱 안 맞아요(✗). 두 띠가 모두 깔끔해지는 수를 찾아 보세요.`, 'bad');
+    }
+  }
+
+  function unlockStep2(){
+    setState(0,'done');setState(1,'active');liveArrow(1);
+    $('tbody').innerHTML = tcard(m.n1,m.d1,m.f1,m.common,'i1a') + tcard(m.n2,m.d2,m.f2,m.common,'i1b');
+    $('tbody').querySelectorAll('input').forEach(inp=>inp.addEventListener('keydown',e=>{if(e.key==='Enter')verify(1);}));
+    const t=$('i1a');if(t)t.focus();
+  }
+  function fillChips(){ buildCandidates(); }
+  function pickCommon(){}
+
+  function verify(i){
+    if(i===1){
       const a=pint($('i1a').value), b=pint($('i1b').value);
       if(Number.isNaN(a)||Number.isNaN(b)){fb(1,'두 분자를 모두 채워 주세요.','bad');return;}
-      if(a!==m.new1){fb(1,`첫째 분수: ${m.n1} × ${m.f1} 를 계산해 보세요.`,'bad');return;}
-      if(b!==m.new2){fb(1,`둘째 분수: ${m.n2} × ${m.f2} 를 계산해 보세요.`,'bad');return;}
+      if(a!==m.new1){
+        if(m.f1!==1 && a===m.n1){fb(1,`첫째 분수: 분모에 ${m.f1}를 곱했으니 분자에도 ${m.f1}를 곱해야 값이 같아요.`,'bad');return;}
+        fb(1,`첫째 분수: ${m.n1} × ${m.f1} 를 계산해 보세요.`,'bad');return;
+      }
+      if(b!==m.new2){
+        if(m.f2!==1 && b===m.n2){fb(1,`둘째 분수: 분모에 ${m.f2}를 곱했으니 분자에도 ${m.f2}를 곱해야 값이 같아요.`,'bad');return;}
+        fb(1,`둘째 분수: ${m.n2} × ${m.f2} 를 계산해 보세요.`,'bad');return;
+      }
       setState(1,'done');setState(2,'active');liveArrow(2);fb(1,'');
       $('cd3').textContent=m.common;const t=$('i2');if(t)t.focus();
     }
     else if(i===2){
       const v=pint($('i2').value);
       if(Number.isNaN(v)){fb(2,'계산한 분자를 적어 주세요.','bad');return;}
-      if(v!==m.resNum){fb(2,`분자끼리 ${m.op==='+'?'더해':'빼'} 볼까요? ${m.new1} ${m.op==='+'?'+':'−'} ${m.new2}`,'bad');return;}
+      if(v!==m.resNum){
+        const rawOp = m.op==='+'?m.n1+m.n2:m.n1-m.n2;
+        if(v===rawOp){fb(2,'통분하기 전 분자로 계산했어요. 2단계에서 바꾼 분자로 다시 해보세요.','bad');return;}
+        if(m.op==='-' && v===m.new2-m.new1){fb(2,'빼는 순서가 바뀌었어요. 앞 분자에서 뒤 분자를 빼요.','bad');return;}
+        fb(2,`분자끼리 ${m.op==='+'?'더해':'빼'} 볼까요? ${m.new1} ${m.op==='+'?'+':'−'} ${m.new2}`,'bad');return;
+      }
       setState(2,'done');setState(3,'active');liveArrow(3);fb(2,'');
       const t=$('i3n');if(t)t.focus();
     }
